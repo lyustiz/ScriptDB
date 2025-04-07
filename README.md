@@ -1,8 +1,15 @@
 # ScriptDB
 
+## Administracion
+- SQL Server 2022 Configuration Manager -  Srvicios
+- SQL Server Management Studio  - Adminstracion
 ## Sqlserver
 
 ### Versiones
+~~~
+SELECT @@version;
+SELECT SERVERPROPERTY('productversion'), SERVERPROPERTY('productlevel'), SERVERPROPERTY('edition')
+~~~
  SQL Server 2016 (versión 13.0), SQL Server 2017 (versión 14.0), SQL Server 2019 (versión 15.0), SQL Server 2022 (versión 16.0). 
 
 ### Backup
