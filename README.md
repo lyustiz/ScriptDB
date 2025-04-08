@@ -3,6 +3,8 @@
 ## Administracion
 - SQL Server 2022 Configuration Manager -  Srvicios
 - SQL Server Management Studio  - Adminstracion
+- Data Migration Asssistant  - Migracion
+- Copy Databese Wizard - MIgracion
 ## Sqlserver
 
 ### Versiones
