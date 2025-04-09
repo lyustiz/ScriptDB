@@ -129,6 +129,146 @@ EXEC sp_readerrorlog;
 SELECT * FROM sys.dm_tran_locks WHERE resource_type = 'OBJECT';
 ~~~
 
+### Indices
+- Muestra estadísticas detalladas de un índice.
+~~~
+DBCC SHOW_STATISTICS('NombreTabla', 'NombreIndice');
+~~~
+~~~
+-- Verificación rápida (recomendada semanalmente)
+DBCC CHECKDB('NombreBD') WITH PHYSICAL_ONLY, NO_INFOMSGS;
+
+-- Verificación completa (recomendada mensualmente)
+DBCC CHECKDB('NombreBD') WITH NO_INFOMSGS;
+
+-- muestra información sobre fragmentación
+SELECT * FROM sys.dm_db_index_physical_stats(
+    DB_ID('NombreBD'), 
+    OBJECT_ID('NombreTabla'), 
+    NULL, NULL, 'DETAILED');
+
+-- Reorganización (operación en línea, menos intrusiva)
+ALTER INDEX [NombreIndice] ON [NombreTabla] REORGANIZE;
+
+-- Reconstrucción (más completa pero puede bloquear la tabla)
+ALTER INDEX [NombreIndice] ON [NombreTabla] REBUILD;
+
+-- Actualización de estadísticas:
+UPDATE STATISTICS [NombreTabla] [NombreIndice] WITH FULLSCAN;
+
+-- DMv
+sys.dm_db_index_physical_stats
+sys.dm_db_index_usage_stats
+sys.dm_db_index_operational_stats
+sys.dm_db_missing_index_stats
+~~~
+- Tipos  CLUSTER - NONCLUSTER
+
+
+# DMVs y DMFs en SQL Server: Dynamic Management Views and Functions
+
+Los **Objetos de Administración Dinámica (DMVs/DMFs)** son vistas y funciones que proporcionan información crítica sobre el estado y rendimiento de SQL Server. Son herramientas esenciales para el monitoreo y solución de problemas.
+
+## Principales categorías de DMVs
+
+### 1. DMVs de rendimiento
+```sql
+-- Consultas más costosas
+SELECT TOP 10 
+    qs.total_elapsed_time/qs.execution_count AS avg_elapsed_time,
+    qs.total_logical_reads/qs.execution_count AS avg_logical_reads,
+    SUBSTRING(qt.text, (qs.statement_start_offset/2)+1,
+        ((CASE qs.statement_end_offset
+          WHEN -1 THEN DATALENGTH(qt.text)
+          ELSE qs.statement_end_offset
+          END - qs.statement_start_offset)/2)+1) AS query_text
+FROM sys.dm_exec_query_stats AS qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS qt
+ORDER BY avg_elapsed_time DESC;
+```
+
+### 2. DMVs de índices
+```sql
+-- Fragmentación de índices
+SELECT 
+    OBJECT_NAME(ind.object_id) AS TableName,
+    ind.name AS IndexName,
+    ips.avg_fragmentation_in_percent
+FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, NULL) ips
+INNER JOIN sys.indexes ind ON ips.object_id = ind.object_id AND ips.index_id = ind.index_id
+WHERE ips.avg_fragmentation_in_percent > 30
+ORDER BY ips.avg_fragmentation_in_percent DESC;
+```
+
+### 3. DMVs de conexiones
+```sql
+-- Conexiones activas
+SELECT 
+    c.session_id,
+    s.login_name,
+    s.host_name,
+    s.program_name,
+    c.connect_time,
+    s.status
+FROM sys.dm_exec_connections c
+JOIN sys.dm_exec_sessions s ON c.session_id = s.session_id;
+```
+
+### 4. DMVs de E/S
+```sql
+-- Estadísticas de archivos de BD
+SELECT 
+    DB_NAME(database_id) AS DatabaseName,
+    file_id,
+    io_stall_read_ms,
+    io_stall_write_ms,
+    size_on_disk_bytes/1024/1024 AS SizeMB
+FROM sys.dm_io_virtual_file_stats(NULL, NULL);
+```
+
+## DMVs útiles para administración diaria
+
+### Monitorización de bloqueos
+```sql
+SELECT
+    tl.request_session_id,
+    wt.blocking_session_id,
+    OBJECT_NAME(p.object_id) AS BlockedObjectName,
+    tl.resource_type,
+    tl.request_mode,
+    tl.request_status
+FROM sys.dm_tran_locks tl
+JOIN sys.partitions p ON tl.resource_associated_entity_id = p.hobt_id
+JOIN sys.dm_os_waiting_tasks wt ON tl.lock_owner_address = wt.resource_address;
+```
+
+### Uso de memoria
+```sql
+SELECT
+    type,
+    pages_kb/1024 AS pages_mb,
+    virtual_memory_committed_kb/1024 AS virtual_memory_mb
+FROM sys.dm_os_memory_clerks
+ORDER BY pages_kb DESC;
+```
+
+### Planes de ejecución en caché
+```sql
+SELECT TOP 20
+    qs.execution_count,
+    qs.total_logical_reads/qs.execution_count AS avg_logical_reads,
+    qs.total_elapsed_time/qs.execution_count AS avg_elapsed_time,
+    SUBSTRING(qt.text, (qs.statement_start_offset/2)+1,
+        ((CASE qs.statement_end_offset
+          WHEN -1 THEN DATALENGTH(qt.text)
+          ELSE qs.statement_end_offset
+          END - qs.statement_start_offset)/2)+1) AS query_text
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+ORDER BY qs.total_logical_reads DESC;
+```
+
+
 ### Scripts
 ~~~
 	WITH CTE AS (
