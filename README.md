@@ -1,12 +1,79 @@
 # ScriptDB
 
+## Sqlserver
+
 ## Administracion
 - SQL Server 2022 Configuration Manager -  Srvicios
 - SQL Server Management Studio  - Adminstracion
 - Data Migration Asssistant  - Migracion
 - Copy Databese Wizard - MIgracion
-## Sqlserver
 
+## DBCC
+1. Verificación de Integridad
+- Verifica la integridad de toda la base de datos.
+~~~
+DBCC CHECKDB('NombreBD') WITH NO_INFOMSGS;
+~~~
+ - Opciones de reparación (REPAIR)
+--- REPAIR_ALLOW_DATA_LOSS**, REPAIR_FAST, REPAIR_REBUILD*
+ - Opciones de verificación
+--- NOINDEX, EXTENDED_LOGICAL_CHECKS, TABLOCK,PHYSICAL_ONLY*
+ - Opciones de reporte
+--- WITH NO_INFOMSGS*, ALL_ERRORMSGS, ESTIMATEONLY*
+ ~~~
+ SELECT * FROM sys.objets WHERE object_id = ID (identificar objeto corrupto por id)
+ ALTER DATABASE dbname SET SINGLE USER WITH ROOLBACK IMMEDIATE;
+ DBCC CHACHDB('dbname', REAPAIR_REBUILD)
+ ALTER DATABASE dbname SET MULTI_USER WITH ROOLBACK IMMEDIATE;
+ ~~~
+- Revisa una tabla específica.
+~~~
+DBCC CHECKTABLE('Tabla') WITH NO_INFOMSGS;
+~~~
+- Examina la asignación de páginas en la BD.
+~~~
+DBCC CHECKALLOC('NombreBD');
+~~~
+2. Mantenimiento de Archivos
+- Reduce el tamaño de la base de datos.
+~~~
+DBCC SHRINKDATABASE('NombreBD', 10); --
+~~~
+- Reduce un archivo específico (ej. .mdf o .ldf).
+~~~
+DBCC SHRINKFILE('ArchivoLog', 100);
+~~~
+- SHRINK puede causar fragmentación → Rebuild índices después.
+4. Limpieza de Caché
+- Borra el buffer cache (útil para pruebas).
+~~~
+DBCC DROPCLEANBUFFERS;
+~~~
+- Limpia el caché de ejecución.
+~~~
+DBCC FREEPROCCACHE;
+~~~
+5. Estadísticas y Diagnóstico
+- Muestra estadísticas del log de transacciones.
+~~~
+DBCC SQLPERF(LOGSPACE);
+~~~
+- Muestra estadísticas de índices.
+~~~
+DBCC SHOW_STATISTICS('Tabla', 'Índice');
+~~~
+- Muestra configuraciones de la sesión actual.
+~~~
+DBCC USEROPTIONS;
+~~~
+6. Depuración (Trace Flags)
+- Activa/desactiva flags de seguimiento.
+~~~
+DBCC TRACEON(1222, -1);  -- Registra deadlocks en el error log
+DBCC TRACEOFF(1222, -1);
+~~~
+- Algunos comandos requieren permisos de sysadmin.
+  
 ### Versiones
 ~~~
 SELECT @@version;
