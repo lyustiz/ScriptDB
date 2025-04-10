@@ -214,17 +214,6 @@ FROM sys.dm_exec_connections c
 JOIN sys.dm_exec_sessions s ON c.session_id = s.session_id;
 ```
 
-### 4. DMVs de E/S
-```sql
--- Estadísticas de archivos de BD
-SELECT 
-    DB_NAME(database_id) AS DatabaseName,
-    file_id,
-    io_stall_read_ms,
-    io_stall_write_ms,
-    size_on_disk_bytes/1024/1024 AS SizeMB
-FROM sys.dm_io_virtual_file_stats(NULL, NULL);
-```
 
 ## DMVs útiles para administración diaria
 
@@ -267,8 +256,73 @@ FROM sys.dm_exec_query_stats qs
 CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
 ORDER BY qs.total_logical_reads DESC;
 ```
+### Identificar cuellos de botella en E/S
+```sql
+SELECT 
+    DB_NAME(vfs.database_id) AS BaseDeDatos,
+    mf.physical_name AS ArchivoFisico,
+    vfs.num_of_reads AS Lecturas,
+    vfs.num_of_bytes_read AS BytesLeidos,
+    vfs.io_stall_read_ms AS EsperaLectura_ms,
+    vfs.num_of_writes AS Escrituras,
+    vfs.num_of_bytes_written AS BytesEscritos,
+    vfs.io_stall_write_ms AS EsperaEscritura_ms,
+    vfs.io_stall AS EsperaTotal,
+    vfs.size_on_disk_bytes / 1024 / 1024 AS TamañoEnDisco_MB
+FROM 
+    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+JOIN 
+    sys.master_files AS mf ON vfs.database_id = mf.database_id 
+    AND vfs.file_id = mf.file_id
+ORDER BY 
+    vfs.io_stall DESC;
+```
 
+### Calcular latencia promedio de E/S
+```sql
+SELECT 
+    DB_NAME(vfs.database_id) AS BaseDeDatos,
+    mf.physical_name AS ArchivoFisico,
+    CASE 
+        WHEN vfs.num_of_reads = 0 THEN 0 
+        ELSE vfs.io_stall_read_ms / vfs.num_of_reads 
+    END AS LatenciaLecturaPromedio,
+    CASE 
+        WHEN vfs.num_of_writes = 0 THEN 0 
+        ELSE vfs.io_stall_write_ms / vfs.num_of_writes 
+    END AS LatenciaEscrituraPromedio,
+    CASE 
+        WHEN (vfs.num_of_reads = 0 AND vfs.num_of_writes = 0) THEN 0 
+        ELSE vfs.io_stall / (vfs.num_of_reads + vfs.num_of_writes) 
+    END AS LatenciaTotalPromedio
+FROM 
+    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+JOIN 
+    sys.master_files AS mf ON vfs.database_id = mf.database_id 
+    AND vfs.file_id = mf.file_id
+ORDER BY 
+    LatenciaTotalPromedio DESC;
+```
 
+### Verificar tamaño de archivo y uso
+```sql
+SELECT 
+    DB_NAME(vfs.database_id) AS BaseDeDatos,
+    mf.name AS NombreLogico,
+    mf.physical_name AS ArchivoFisico,
+    vfs.size_on_disk_bytes / 1024 / 1024 AS TamañoEnDisco_MB,
+    mf.size * 8 / 1024 AS TamañoAsignado_MB,
+    vfs.num_of_reads AS Lecturas,
+    vfs.num_of_writes AS Escrituras
+FROM 
+    sys.dm_io_virtual_file_stats(NULL, NULL) AS vfs
+JOIN 
+    sys.master_files AS mf ON vfs.database_id = mf.database_id 
+    AND vfs.file_id = mf.file_id
+ORDER BY 
+    vfs.size_on_disk_bytes DESC;
+```
+- 20.000 ms max
 ### Scripts
 ~~~
 	WITH CTE AS (
