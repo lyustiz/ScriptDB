@@ -7,7 +7,9 @@
 - SQL Server Management Studio  - Adminstracion
 - Data Migration Asssistant  - Migracion
 - Copy Databese Wizard - MIgracion
-
+- BCP - transferencia masiva de datos ETL 
+- SSIS SQL Server Integration Services  - extracion y manipulacion de datos ETL 
+- sqlpackage.exe - automatizar tareas de desarrollo y despliegue de bases de datos SQL Server.
 ## DBCC
 1. Verificación de Integridad
 - Verifica la integridad de toda la base de datos.
@@ -390,7 +392,90 @@ WHERE ROWID NOT IN (
 );
 ~~~
 
+# SQL Server **BCP (Bulk Copy Program)**: Guía en Español
 
+**BCP** (*Bulk Copy Program*) es una herramienta de línea de comandos incluida en SQL Server que permite importar/exportar datos masivos entre SQL Server y archivos de datos.
+
+## 🔹 ¿Qué es BCP?
+- Herramienta nativa de SQL Server para transferencia masiva de datos
+- Soporta formatos: CSV, TXT, nativo de SQL Server
+- Muy rápida para operaciones ETL (Extraer, Transformar, Cargar)
+- Funciona sin necesidad de SSIS
+
+## 🔹 Sintaxis básica
+```cmd
+bcp {tabla|vista|query} {in|out|format} archivo [opciones]
+```
+
+## 🔹 Ejemplos prácticos
+
+### 1️⃣ Exportar datos a CSV
+```cmd
+bcp AdventureWorks.HumanResources.Department out Departamentos.csv -c -T -S localhost -t,
+```
+Opciones:
+- `-c`: formato carácter (CSV)
+- `-T`: autenticación Windows
+- `-S`: servidor
+- `-t,`: delimitador coma
+
+### 2️⃣ Importar datos desde CSV
+```cmd
+bcp AdventureWorks.HumanResources.Department in Departamentos.csv -c -T -S localhost -t,
+```
+
+### 3️⃣ Exportar con query
+```cmd
+bcp "SELECT Name, GroupName FROM AdventureWorks.HumanResources.Department" queryout Departamentos.csv -c -T -S localhost
+```
+
+### 4️⃣ Especificar formato con archivo de formato
+```cmd
+bcp AdventureWorks.Sales.SalesOrderDetail format nul -f SalesOrderDetail.fmt -n -T -S localhost
+bcp AdventureWorks.Sales.SalesOrderDetail in Datos.bcp -f SalesOrderDetail.fmt -T -S localhost
+```
+
+## 🔹 Opciones comunes
+
+| Opción | Descripción |
+|--------|-------------|
+| `-n`   | Formato nativo |
+| `-c`   | Formato carácter (CSV) |
+| `-w`   | Formato Unicode |
+| `-q`   | Usar nombres entre comillas |
+| `-T`   | Autenticación Windows |
+| `-U` -`P` | Usuario/contraseña |
+| `-S`   | Servidor |
+| `-t`   | Delimitador de campo |
+| `-r`   | Delimitador de fila |
+| `-F`   | Primera fila a importar |
+| `-L`   | Última fila a importar |
+| `-b`   | Tamaño del lote (batch) |
+| `-e`   | Archivo de errores |
+| `-f`   | Archivo de formato |
+
+## 🔹 Ventajas de BCP
+✅ **Extremadamente rápido** para grandes volúmenes  
+✅ **Poco consumo de recursos** del servidor  
+✅ **Flexible** con múltiples formatos  
+✅ **Puede usarse en scripts** y automatizaciones  
+
+## 🔹 Limitaciones
+❌ No tiene transformaciones complejas (como SSIS)  
+❌ Manejo básico de errores  
+❌ Requiere permisos adecuados en la base de datos  
+
+## 🔹 ¿Dónde se encuentra bcp.exe?
+Normalmente en:  
+`C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\bcp.exe`
+
+## 🔹 Alternativas modernas
+- **BULK INSERT** (comando T-SQL)
+- **OPENROWSET(BULK...)** (T-SQL)
+- **Azure Data Factory**
+- **SSIS (SQL Server Integration Services)**
+
+¿Necesitas ayuda con algún escenario específico de uso de BCP? 😊
 # ORACLE
 - BLOQUEOS
 ~~~
