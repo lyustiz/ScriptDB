@@ -47,3 +47,16 @@ done
 
 echo "Verificando respaldos en el directorio de mas de 2 dias para eliminar ..."
 find . -name "*_dbbk.zip" -mtime +2 -exec echo "eliminando respaldo {} de hace 2 dias..." \; -exec rm -f {} \;
+
+
+
+#!/bin/bash
+# Backup completo domingos, incrementales otros días
+
+if [ $(date +%u) -eq 7 ]; then
+  mysqldump -u backup_user -p --single-transaction --master-data=2 --flush-logs DB_NAME > /backups/full_$(date +%F).sql
+else
+  LAST_BACKUP=$(ls -t /backups/full_*.sql /backups/incr_*.sql | head -1)
+  POSITION=$(grep "CHANGE MASTER TO" $LAST_BACKUP | awk '{print $6}' | cut -d';' -f1)
+  mysqlbinlog --start-position=$POSITION /var/lib/mysql/mysql-bin.0* > /backups/incr_$(date +%F).sql
+fi
